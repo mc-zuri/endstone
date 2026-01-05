@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "endstone/block/block_data.h"
 #include "endstone/block/block_face.h"
@@ -164,6 +165,17 @@ public:
      * @return Block
      */
     [[nodiscard]] virtual std::unique_ptr<Block> clone() const = 0;
+
+    /**
+     * @brief Gets the collision shapes for this block.
+     *
+     * Returns a list of axis-aligned bounding boxes (AABBs) that represent the collision shape
+     * of this block. Each AABB is represented as a vector of 6 floats: [minX, minY, minZ, maxX, maxY, maxZ].
+     * The collision shape is calculated based on the block's current state and neighboring blocks.
+     *
+     * @return A vector of collision shapes, where each shape is a vector of 6 floats.
+     */
+    [[nodiscard]] virtual std::vector<std::vector<float>> getCollisionShapes() const = 0;
 };
 
 }  // namespace endstone

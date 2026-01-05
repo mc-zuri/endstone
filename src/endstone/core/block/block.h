@@ -39,6 +39,7 @@ public:
     [[nodiscard]] Location getLocation() const override;
     [[nodiscard]] std::unique_ptr<BlockState> captureState() const override;
     [[nodiscard]] std::unique_ptr<Block> clone() const override;
+    [[nodiscard]] std::vector<std::vector<float>> getCollisionShapes() const override;
 
     [[nodiscard]] BlockPos getPosition() const;
     [[nodiscard]] ::Block &getMinecraftBlock() const;

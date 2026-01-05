@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-collision-extractor"
+version = "1.0.0"
+description = "Extract block collision shapes with neighbor-dependent calculations"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["endstone"]
+
+[project.entry-points."endstone"]
+collision_extractor = "endstone_collision_extractor:CollisionExtractor"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_collision_extractor"]
