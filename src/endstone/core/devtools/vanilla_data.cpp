@@ -47,6 +47,93 @@ inline void to_json(nlohmann::json &json, const AABB &aabb)
 
 namespace endstone::core::devtools {
 namespace {
+
+// Check if a block name matches neighbor-dependent patterns
+bool isNeighborDependentBlock(const std::string &name)
+{
+    // Fences (not fence gates)
+    if (name.find("fence") != std::string::npos && name.find("gate") == std::string::npos) {
+        return true;
+    }
+    // Glass panes
+    if (name.find("glass_pane") != std::string::npos) {
+        return true;
+    }
+    // Iron bars
+    if (name == "minecraft:iron_bars") {
+        return true;
+    }
+    return false;
+}
+
+void dumpNeighborDependentShapes(VanillaData &data, ::Level &level)
+{
+    auto overworld = level.getDimension(VanillaDimensions::Overworld);
+    auto &region = overworld.unwrap()->getBlockSourceFromMainChunkSource();
+    auto block_registry = level.getBlockTypeRegistry();
+
+    // Get air and stone blocks for clearing and placing neighbors
+    const Block &air_block = block_registry->getDefaultBlockState("minecraft:air");
+    const Block &stone_block = block_registry->getDefaultBlockState("minecraft:stone");
+
+    // Center position for testing (high Y to avoid terrain interference)
+    const BlockPos center{0, 100, 0};
+
+    // Neighbor offsets: North(-Z), South(+Z), East(+X), West(-X)
+    const std::array<BlockPos, 4> neighbor_offsets = {{{0, 0, -1}, {0, 0, 1}, {1, 0, 0}, {-1, 0, 0}}};
+
+    // Clear a 3x3x3 area around center
+    auto clear_area = [&]() {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    region.setBlock(center + BlockPos{dx, dy, dz}, air_block, 0, nullptr, {});
+                }
+            }
+        }
+    };
+
+    block_registry->forEachBlockType([&](const BlockType &block_type) {
+        const auto &name = block_type.getName().getString();
+
+        if (!isNeighborDependentBlock(name)) {
+            return true;
+        }
+
+        const Block &default_block = block_type.getDefaultState();
+        nlohmann::json block_shapes;
+
+        // Test all 16 neighbor combinations (4 bits: N, S, E, W)
+        for (int neighbors = 0; neighbors < 16; neighbors++) {
+            clear_area();
+
+            // Place neighbor blocks based on bitmask
+            for (int i = 0; i < 4; i++) {
+                if (neighbors & (1 << i)) {
+                    region.setBlock(center + neighbor_offsets[i], stone_block, 0, nullptr, {});
+                }
+            }
+
+            // Place the target block at center
+            region.setBlock(center, default_block, 0, nullptr, {});
+
+            // Get the collision shape
+            std::vector<AABB> collision_shape;
+            const Block &placed_block = region.getBlock(center);
+            placed_block.addCollisionShapes(region, center, nullptr, collision_shape, nullptr);
+
+            // Store the shape
+            block_shapes[std::to_string(neighbors)] = collision_shape;
+        }
+
+        // Clean up
+        clear_area();
+
+        data.neighbor_collision_shapes[name] = block_shapes;
+        return true;
+    });
+}
+
 void dumpBlockData(VanillaData &data, const ::Level &level)
 {
     auto overworld = level.getDimension(VanillaDimensions::Overworld);
@@ -392,6 +479,7 @@ VanillaData *VanillaData::get()
                     // run on the server thread instead of UI thread
                     VanillaData data;
                     dumpBlockData(data, level);
+                    dumpNeighborDependentShapes(data, level);
                     dumpItemData(data, level);
                     dumpRecipes(data, level);
                     dumpBiomes(data, level);

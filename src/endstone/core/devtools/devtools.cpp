@@ -282,6 +282,10 @@ void render()
                         file_to_save = data->block_tags;
                         openFileBrowser("Save Block Tags", "block_tags.json");
                     }
+                    if (ImGui::MenuItem("Neighbor Collision Shapes")) {
+                        file_to_save = data->neighbor_collision_shapes;
+                        openFileBrowser("Save Neighbor Collision Shapes", "neighbor_collision_shapes.json");
+                    }
                     if (ImGui::MenuItem("Items")) {
                         file_to_save = data->items;
                         openFileBrowser("Save Items", "items.json");
@@ -485,6 +489,10 @@ void showBlockWindow(bool *open)
         ImGui::Json(data->block_palette);
     }
 
+    if (ImGui::CollapsingHeader(fmt::format("{} Neighbor Collision Shapes", data->neighbor_collision_shapes.size()).c_str())) {
+        ImGui::Json(data->neighbor_collision_shapes);
+    }
+
     ImGui::End();
 }
 
@@ -636,6 +644,7 @@ void exportAll(const std::filesystem::path &base_path, const VanillaData *data)
     save_json_to_file(data->block_types, "block_types.json");
     save_json_to_file(data->block_states, "block_states.json");
     save_json_to_file(data->block_tags, "block_tags.json");
+    save_json_to_file(data->neighbor_collision_shapes, "neighbor_collision_shapes.json");
     save_json_to_file(data->items, "items.json");
     save_json_to_file(data->item_tags, "item_tags.json");
     save_json_to_file(data->creative_groups, "creative_groups.json");

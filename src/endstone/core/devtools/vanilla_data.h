@@ -47,6 +47,11 @@ struct VanillaData {
         nlohmann::json material_reducer;
     } recipes;
 
+    // Neighbor-dependent collision shapes for fences, panes, bars, stairs
+    // Format: { "minecraft:oak_fence": { "0": [[shape]], "1": [[shape]], ... "15": [[shape]] } }
+    // Neighbor bitmask: bit 0=north, 1=south, 2=east, 3=west
+    nlohmann::json neighbor_collision_shapes;
+
     static VanillaData *get();
 };
 
