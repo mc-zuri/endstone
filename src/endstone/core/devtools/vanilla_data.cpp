@@ -72,14 +72,29 @@ void dumpNeighborDependentShapes(VanillaData &data, const ::Level &level)
     auto &region = overworld.unwrap()->getBlockSourceFromMainChunkSource();
     auto block_registry = level.getBlockTypeRegistry();
 
-    // Get air and stone blocks for clearing and placing neighbors
-    auto air_type = block_registry->lookupByName(HashedString("minecraft:air"), false);
-    auto stone_type = block_registry->lookupByName(HashedString("minecraft:stone"), false);
-    if (!air_type || !stone_type) {
-        return;
+    // Find air and stone blocks by iterating through all block types
+    const ::Block *air_block = nullptr;
+    const ::Block *stone_block = nullptr;
+    std::vector<std::pair<std::string, const ::Block *>> target_blocks;
+
+    block_registry->forEachBlockType([&](const BlockType &block_type) {
+        const auto &name = block_type.getName().getString();
+
+        if (name == "minecraft:air") {
+            air_block = &block_type.getDefaultState();
+        }
+        else if (name == "minecraft:stone") {
+            stone_block = &block_type.getDefaultState();
+        }
+        else if (isNeighborDependentBlock(name)) {
+            target_blocks.emplace_back(name, &block_type.getDefaultState());
+        }
+        return true;
+    });
+
+    if (!air_block || !stone_block) {
+        return;  // Can't proceed without air and stone
     }
-    const ::Block &air_block = air_type->getDefaultState();
-    const ::Block &stone_block = stone_type->getDefaultState();
 
     // Center position for testing (high Y to avoid terrain interference)
     const BlockPos center{0, 100, 0};
@@ -87,25 +102,21 @@ void dumpNeighborDependentShapes(VanillaData &data, const ::Level &level)
     // Neighbor offsets: North(-Z), South(+Z), East(+X), West(-X)
     const std::array<BlockPos, 4> neighbor_offsets = {{{0, 0, -1}, {0, 0, 1}, {1, 0, 0}, {-1, 0, 0}}};
 
+    // Use BlockPos-based context to avoid default constructor linker issue
+    BlockChangeContext ctx{center};
+
     // Clear a 3x3x3 area around center
     auto clear_area = [&]() {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 for (int dz = -1; dz <= 1; dz++) {
-                    region.setBlock(center + BlockPos{dx, dy, dz}, air_block, 0, nullptr, {});
+                    region.setBlock(center + BlockPos{dx, dy, dz}, *air_block, 0, nullptr, ctx);
                 }
             }
         }
     };
 
-    block_registry->forEachBlockType([&](const BlockType &block_type) {
-        const auto &name = block_type.getName().getString();
-
-        if (!isNeighborDependentBlock(name)) {
-            return true;
-        }
-
-        const ::Block &default_block = block_type.getDefaultState();
+    for (const auto &[name, default_block] : target_blocks) {
         nlohmann::json block_shapes;
 
         // Test all 16 neighbor combinations (4 bits: N, S, E, W)
@@ -115,12 +126,12 @@ void dumpNeighborDependentShapes(VanillaData &data, const ::Level &level)
             // Place neighbor blocks based on bitmask
             for (int i = 0; i < 4; i++) {
                 if (neighbors & (1 << i)) {
-                    region.setBlock(center + neighbor_offsets[i], stone_block, 0, nullptr, {});
+                    region.setBlock(center + neighbor_offsets[i], *stone_block, 0, nullptr, ctx);
                 }
             }
 
             // Place the target block at center
-            region.setBlock(center, default_block, 0, nullptr, {});
+            region.setBlock(center, *default_block, 0, nullptr, ctx);
 
             // Get the collision shape
             std::vector<AABB> collision_shape;
@@ -135,8 +146,7 @@ void dumpNeighborDependentShapes(VanillaData &data, const ::Level &level)
         clear_area();
 
         data.neighbor_collision_shapes[name] = block_shapes;
-        return true;
-    });
+    }
 }
 
 void dumpBlockData(VanillaData &data, const ::Level &level)
