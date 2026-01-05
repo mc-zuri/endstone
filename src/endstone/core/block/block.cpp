@@ -14,7 +14,9 @@
 
 #include "endstone/core/block/block.h"
 
+#include "bedrock/world/direction.h"
 #include "bedrock/world/level/dimension/dimension.h"
+#include "bedrock/world/phys/aabb.h"
 #include "endstone/core/block/block_data.h"
 #include "endstone/core/block/block_face.h"
 #include "endstone/core/block/block_state.h"
@@ -132,8 +134,38 @@ BlockPos EndstoneBlock::getPosition() const
     return const_cast<::Block &>(block_source_.get().getBlock(block_pos_));
 }
 
+std::vector<std::vector<float>> EndstoneBlock::getCollisionShapes() const
+{
+    std::vector<AABB> collision_shapes;
+    const ::Block &block = getMinecraftBlock();
+    block.addCollisionShapes(block_source_.get(), block_pos_, nullptr, collision_shapes, nullptr);
+
+    std::vector<std::vector<float>> result;
+    result.reserve(collision_shapes.size());
+    for (const auto &aabb : collision_shapes) {
+        result.push_back({aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z});
+    }
+    return result;
+}
+
 std::unique_ptr<EndstoneBlock> EndstoneBlock::at(BlockSource &block_source, BlockPos block_pos)
 {
     return std::make_unique<EndstoneBlock>(block_source, block_pos);
+}
+
+BlockFace EndstoneBlock::toBlockFace(Direction::Type direction)
+{
+    switch (direction) {
+    case Direction::Type::NORTH:
+        return BlockFace::North;
+    case Direction::Type::SOUTH:
+        return BlockFace::South;
+    case Direction::Type::WEST:
+        return BlockFace::West;
+    case Direction::Type::EAST:
+        return BlockFace::East;
+    default:
+        return BlockFace::Down;
+    }
 }
 }  // namespace endstone::core

@@ -448,6 +448,10 @@ class Block:
         """
         Captures the current state of this block. The returned object will never be updated, and you are not guaranteed that (for example) a sign is still a sign after you capture its state.
         """
+    def get_collision_shapes(self) -> list[list[float]]:
+        """
+        Gets the collision shapes for this block. Returns a list of AABBs as [minX, minY, minZ, maxX, maxY, maxZ].
+        """
     @typing.overload
     def get_relative(self, offset_x: int, offset_y: int, offset_z: int) -> Block:
         """

@@ -70,6 +70,9 @@ void init_block(py::module_ &m, py::class_<Block> &block)
         .def("capture_state", &Block::captureState,
              "Captures the current state of this block. The returned object will never be updated, and you are not "
              "guaranteed that (for example) a sign is still a sign after you capture its state.")
+        .def("get_collision_shapes", &Block::getCollisionShapes,
+             "Gets the collision shapes for this block. Returns a list of AABBs as [minX, minY, minZ, maxX, maxY, "
+             "maxZ].")
         .def("__str__", [](const Block &self) { return fmt::format("{}", self); });
 }
 
